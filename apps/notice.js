@@ -14,6 +14,68 @@ export class NoticeHandler extends plugin {
   }
 
   async accept() {
+    // 读取审核模式
+    const mode = this.config.config.reviewMode ?? 2
+    if (mode === 0) {
+      // 自动同意加群邀请
+      try {
+        await this.e.bot.sendApi('set_group_add_request', {
+          flag: this.e.flag,
+          sub_type: 'invite',
+          approve: true
+        })
+        // 通知邀请人
+        const msg = '【群组邀请管理】\n' +
+          '✅ 已自动同意加群邀请\n' +
+          '━━━━━━━━━━━━━━\n' +
+          '机器人已自动加入群聊，无需审核。'
+        try {
+          await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
+          await this.notifyExtraUsers(msg, this.e)
+        } catch (err) {
+          logger.error('[群组邀请管理] 发送自动同意私聊消息失败:', err)
+        }
+      } catch (err) {
+        logger.error('[群组邀请管理] 自动同意加群邀请失败:', err)
+      }
+      return true
+    }
+    if (mode === 1) {
+      // 关闭不处理
+      const msg = '【群组邀请管理】\n' +
+        '⚠️ 当前加群审核已关闭，机器人不会处理加群邀请。'
+      try {
+        await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
+        await this.notifyExtraUsers(msg, this.e)
+      } catch (err) {
+        logger.error('[群组邀请管理] 发送审核关闭私聊消息失败:', err)
+      }
+      return true
+    }
+    if (mode === 3) {
+      // 自动拒绝加群邀请
+      try {
+        await this.e.bot.sendApi('set_group_add_request', {
+          flag: this.e.flag,
+          sub_type: 'invite',
+          approve: false
+        })
+        const msg = '【群组邀请管理】\n' +
+          '❌ 已自动拒绝加群邀请\n' +
+          '━━━━━━━━━━━━━━\n' +
+          '机器人已自动拒绝本次加群邀请。'
+        try {
+          await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
+          await this.notifyExtraUsers(msg, this.e)
+        } catch (err) {
+          logger.error('[群组邀请管理] 发送自动拒绝私聊消息失败:', err)
+        }
+      } catch (err) {
+        logger.error('[群组邀请管理] 自动拒绝加群邀请失败:', err)
+      }
+      return true
+    }
+    // mode === 2 走原审核逻辑
     // 获取群信息
     let groupName = "未知"
     try {
@@ -89,6 +151,9 @@ export class NoticeHandler extends plugin {
       }
     }
 
+    // 通知额外用户（内容与管理群一致）
+    await this.notifyExtraUsers(msg, this.e)
+
     if (!hasSend) {
       // 没有任何管理群发送成功，通知邀请人
       try {
@@ -106,8 +171,7 @@ export class NoticeHandler extends plugin {
       // 收集所有启用的管理群号
       const enabledGroups = (this.config.config.groups || []).filter(g => g.isEnabled)
       const groupIds = enabledGroups.map(g => g.groupId).join('、')
-      await this.e.bot.pickFriend(this.e.user_id).sendMsg(
-        '【群组邀请管理】\n' +
+      const msg = '【群组邀请管理】\n' +
         '📢 您的加群请求已收到\n' +
         '━━━━━━━━━━━━━━\n' +
         '⚠️ 请按以下步骤操作：\n' +
@@ -116,12 +180,28 @@ export class NoticeHandler extends plugin {
         '3️⃣ 回复该通知并发送 #确认加群 或 #拒绝加群\n' +
         '━━━━━━━━━━━━━━\n' +
         `⏰ 注意：请求将在${this.config.config.requestExpireMinutes || 5}分钟后自动取消`
-      )
+      await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
     } catch (err) {
       logger.error('[群组邀请管理] 发送私聊消息失败:', err)
     }
 
     // 不自动处理加群请求，等待确认
     return true
+  }
+
+  // 辅助函数：同时通知额外用户
+  async notifyExtraUsers(msg, e) {
+    const notifyUsers = Array.isArray(this.config.config.notifyUsers) ? this.config.config.notifyUsers : []
+    logger.mark(`[群组邀请管理] 尝试通知额外用户: ${notifyUsers.map(u => u.userId).join(',')}`)
+    for (const user of notifyUsers) {
+      if (user.userId && user.userId != e.user_id) {
+        logger.mark(`[群组邀请管理] 正在通知: ${user.userId}，内容：${msg}`)
+        try {
+          await this.e.bot.pickFriend(user.userId).sendMsg(msg)
+        } catch (err) {
+          logger.error(`[群组邀请管理] 发送额外通知给${user.userId}失败:`, err)
+        }
+      }
+    }
   }
 } 

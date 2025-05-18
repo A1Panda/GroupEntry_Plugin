@@ -6,7 +6,7 @@ export class ConfirmHandler extends plugin {
     super({
       name: '群组邀请确认',
       dsc: '处理群组邀请确认',
-      event: 'message.group',
+      event: 'message',
       priority: 1000
     })
     
@@ -105,20 +105,37 @@ export class ConfirmHandler extends plugin {
       return true
     }
 
-    // 检查权限：必须是邀请者、群主或群管理
+    // 检查权限：必须是邀请者、群主或群管理或notifyUsers
     const isInviter = e.user_id === pendingRequest.userId
     const isAdmin = e.sender.role === 'admin' || e.sender.role === 'owner'
-    
-    if (!isInviter && !isAdmin) {
+    const isNotifyUser = Array.isArray(this.config.config.notifyUsers)
+      && this.config.config.notifyUsers.some(u => String(u.userId) === String(e.user_id));
+    const allowInviterConfirm = this.config.config.allowInviterConfirm !== false
+    if ((!isAdmin && !isInviter && !isNotifyUser) || (!allowInviterConfirm && isInviter && !isAdmin && !isNotifyUser)) {
       await e.reply('【群组邀请管理】\n' +
         '❌ 操作失败\n' +
         '━━━━━━━━━━━━━━\n' +
         '⚠️ 权限不足\n' +
         '📝 只有以下用户才能处理加群请求：\n' +
-        '1️⃣ 邀请者本人\n' +
+        (allowInviterConfirm ? '1️⃣ 邀请者本人\n' : '') +
         '2️⃣ 群主\n' +
-        '3️⃣ 群管理员')
+        '3️⃣ 群管理员\n' +
+        '4️⃣ 通知用户（配置）')
       return true
+    }
+
+    // 辅助函数：同时通知额外用户
+    const notifyExtraUsers = async (msg) => {
+      const notifyUsers = Array.isArray(this.config.config.notifyUsers) ? this.config.config.notifyUsers : []
+      for (const user of notifyUsers) {
+        if (user.userId && user.userId != e.user_id) {
+          try {
+            await e.bot.pickFriend(user.userId).sendMsg(msg)
+          } catch (err) {
+            logger.error(`[群组邀请管理] 发送额外通知给${user.userId}失败:`, err)
+          }
+        }
+      }
     }
 
     // 处理加群请求
@@ -143,15 +160,16 @@ export class ConfirmHandler extends plugin {
 
     // 发送处理结果消息
     if (isConfirm) {
-      await e.reply('【群组邀请管理】\n' +
+      const msg = '【群组邀请管理】\n' +
         '✅ 操作成功\n' +
         '━━━━━━━━━━━━━━\n' +
         '📢 已同意加群请求\n' +
         '📝 处理结果：\n' +
         '1️⃣ 机器人将加入目标群\n' +
         '2️⃣ 邀请者将收到通知\n' +
-        '3️⃣ 加群请求已关闭')
-
+        '3️⃣ 加群请求已关闭'
+      await e.reply(msg)
+      await notifyExtraUsers(msg)
       // 私聊通知邀请者
       try {
         await e.bot.pickFriend(pendingRequest.userId).sendMsg(
@@ -169,14 +187,15 @@ export class ConfirmHandler extends plugin {
         logger.error('[群组邀请管理] 发送私聊消息失败:', err)
       }
     } else {
-      await e.reply('【群组邀请管理】\n' +
+      const msg = '【群组邀请管理】\n' +
         '✅ 操作成功\n' +
         '━━━━━━━━━━━━━━\n' +
         '📢 已拒绝加群请求\n' +
         '📝 处理结果：\n' +
         '1️⃣ 加群请求已关闭\n' +
-        '2️⃣ 邀请者将收到通知')
-
+        '2️⃣ 邀请者将收到通知'
+      await e.reply(msg)
+      await notifyExtraUsers(msg)
       // 私聊通知邀请者
       try {
         await e.bot.pickFriend(pendingRequest.userId).sendMsg(

@@ -22,7 +22,7 @@ export class Config {
       logger.error('[群组邀请管理] 加载默认配置失败:', err)
     }
     // 兜底
-    return { groups: [], pendingRequests: [], requestExpireMinutes: 5, maxPendingRequests: 20 }
+    return { groups: [], pendingRequests: [], requestExpireMinutes: 5, maxPendingRequests: 20, minGroupMember: 10, autoQuitEnabled: true }
   }
 
   loadConfig() {

@@ -19,6 +19,10 @@ export function supportGuoba() {
     configInfo: {
       schemas: [
         {
+          label: '通知管理',
+          component: 'SOFT_GROUP_BEGIN'
+        },
+        {
           component: "Divider",
           label: "群组配置",
           componentProps: {
@@ -29,7 +33,7 @@ export function supportGuoba() {
         {
           field: "groups",
           label: "群组列表",
-          bottomHelpMessage: "配置群组信息",
+          bottomHelpMessage: "配置你的管理群（这里之后会接收加群请求）",
           component: "GSubForm",
           componentProps: {
             multiple: true,
@@ -62,16 +66,79 @@ export function supportGuoba() {
           },
         },
         {
+            component: "Divider",
+            label: "私聊配置",
+            componentProps: {
+              orientation: "left",
+              plain: true,
+            },
+          },
+        {
+          field: "notifyUsers",
+          label: "通知用户",
+          bottomHelpMessage: "配置后加群相关通知会同时私聊这些用户。",
+          component: "GSubForm",
+          componentProps: {
+            multiple: true,
+            schemas: [
+              {
+                field: "userId",
+                label: "QQ号",
+                required: true,
+                component: "Input",
+                componentProps: {
+                  placeholder: "请输入QQ号"
+                }
+              },
+              {
+                field: "remark",
+                label: "备注",
+                component: "Input",
+                componentProps: {
+                  placeholder: "可选，便于识别"
+                }
+              }
+            ]
+          }
+        },
+        {
+          label: '群邀请审核',
+          component: 'SOFT_GROUP_BEGIN'
+        },
+        {
+          field: "allowInviterConfirm",
+          label: "邀请者确认加群",
+          bottomHelpMessage: "关闭后邀请者本人无法同意自己的加群请求，只能由群主或管理员同意。",
+          component: "Switch",
+          defaultValue: true
+        },
+        {
           component: "Divider",
-          label: "高级设置",
+          label: "审核设置",
           componentProps: {
             orientation: "left",
             plain: true,
           },
         },
         {
+          field: "reviewMode",
+          label: "加群审核模式",
+          bottomHelpMessage: "0-自动同意 1-关闭不处理 2-需审核(默认) 3-自动拒绝",
+          component: "Select",
+          defaultValue: 2,
+          componentProps: {
+            options: [
+              { label: "自动同意加群", value: 0 },
+              { label: "关闭（不处理）", value: 1 },
+              { label: "需审核", value: 2 },
+              { label: "自动拒绝加群", value: 3 }
+            ]
+          }
+        },
+        {
           field: "requestExpireMinutes",
           label: "过期时间(分钟)",
+          bottomHelpMessage: "加群请求超时时间，单位分钟",
           component: "InputNumber",
           componentProps: {
             min: 1,
@@ -79,20 +146,68 @@ export function supportGuoba() {
             step: 1,
             placeholder: "默认5分钟",
             readonly: false
-          },
-          helpMessage: "加群请求超时时间，单位分钟"
+          }
         },
         {
           field: "maxPendingRequests",
           label: "最大请求数",
+          bottomHelpMessage: "最多同时存在的待处理加群请求数",
           component: "InputNumber",
           componentProps: {
             min: 1,
             max: 100,
             step: 1,
             placeholder: "默认20"
+          }
+        },
+        {
+          label: "自动退群",
+          component: "SOFT_GROUP_BEGIN",
+        },
+        {
+          component: "Divider",
+          label: "退群设置",
+          componentProps: {
+            orientation: "left",
+            plain: true,
           },
-          helpMessage: "最多同时存在的待处理加群请求数"
+        },
+        {
+          field: "autoQuitEnabled",
+          label: "自动退群开关",
+          bottomHelpMessage: "关闭后机器人不会自动退群",
+          component: "Switch",
+          defaultValue: true
+        },
+        {
+          field: "minGroupMember",
+          label: "最小成员数",
+          bottomHelpMessage: "退群判断的成员数阈值，低于该值将自动退群",
+          component: "InputNumber",
+          componentProps: {
+            min: 1,
+            max: 100,
+            step: 1,
+            placeholder: "默认10"
+          }
+        },
+        {
+          field: "autoQuitMsg",
+          label: "退群通知内容",
+          bottomHelpMessage: "支持变量：{memberCount}、{minMember}、{groupIds}",
+          extra: "机器人自动退群时发送的消息，可用变量：{memberCount}（当前成员数）、{minMember}（阈值）、{groupIds}（所有启用的管理群号）",
+          component: "Input",
+          componentProps: {
+            placeholder: "支持变量：{memberCount}、{minMember}、{groupIds}",
+            maxlength: 100
+          }
+        },
+        {
+          field: "allowAdminInvite",
+          label: "管理邀请免退群",
+          bottomHelpMessage: "开启后群主和管理员邀请机器人时不会自动退群，关闭则只有主人邀请才不会退群。",
+          component: "Switch",
+          defaultValue: false
         }
       ],
       getConfigData() {
