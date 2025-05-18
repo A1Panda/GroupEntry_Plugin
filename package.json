@@ -1,0 +1,31 @@
+{
+    "name": "group-entry-plugin",
+    "version": "1.0.0",
+    "description": "Yunzai-Bot 群组邀请管理插件，支持加群审核、自动退群、可视化配置等功能。",
+    "author": "@A1_Pa",
+    "type": "module",
+    "main": "index.js",
+    "scripts": {
+        "lint": "npx prettier --write **/*.js",
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "lodash": "^4.17.21",
+        "axios": "^1.7.9"
+    },
+    "keywords": [
+        "Yunzai-Bot",
+        "群组邀请",
+        "加群审核",
+        "自动退群",
+        "锅巴面板",
+        "插件"
+    ],
+    "prettier": {
+        "useTabs": false,
+        "tabWidth": 2,
+        "printWidth": 100,
+        "singleQuote": true,
+        "semi": false
+    }
+}
