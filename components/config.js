@@ -6,6 +6,10 @@ export class Config {
   constructor() {
     this.configPath = path.join(process.cwd(), 'plugins/GroupEntry_Plugin/config/config.json')
     this.config = this.loadConfig()
+    // 初始化pendingRequests为数组，如果config中没有则创建
+    if (!this.config.pendingRequests) {
+      this.config.pendingRequests = []
+    }
   }
 
   loadConfig() {
@@ -17,7 +21,8 @@ export class Config {
       logger.error('[群组邀请管理] 加载配置文件失败:', err)
     }
     return {
-      groups: []
+      groups: [],
+      pendingRequests: [] // 初始化为数组
     }
   }
 
@@ -64,20 +69,43 @@ export class Config {
     this.saveConfig()
   }
 
-  async getPendingRequest() {
-    return this.config.pendingRequest
+  async getPendingRequests() {
+    // 过滤掉过期的请求
+    const now = Date.now()
+    this.config.pendingRequests = this.config.pendingRequests.filter(req => 
+      now - req.requestTime <= 5 * 60 * 1000
+    )
+    this.saveConfig()
+    return this.config.pendingRequests
   }
 
-  async setPendingRequest(request) {
-    this.config.pendingRequest = request
-    this.config.pendingRequestTime = Date.now()
+  async getPendingRequestByMsgId(msgId) {
+    const requestIndex = this.config.pendingRequests.findIndex(req => req.msgId === msgId)
+    if (requestIndex === -1) return null
+
+    const pendingRequest = this.config.pendingRequests[requestIndex]
+
+    // 检查请求是否过期（5分钟）
+    if (Date.now() - pendingRequest.requestTime > 5 * 60 * 1000) {
+      this.config.pendingRequests.splice(requestIndex, 1) // 删除过期请求
+      this.saveConfig()
+      return null
+    }
+
+    return pendingRequest
+  }
+
+  async addPendingRequest(request) {
+    this.config.pendingRequests.push(request)
     this.saveConfig()
   }
 
-  async clearPendingRequest() {
-    this.config.pendingRequest = null
-    this.config.pendingRequestTime = null
-    this.saveConfig()
+  async removePendingRequestByMsgId(msgId) {
+    const requestIndex = this.config.pendingRequests.findIndex(req => req.msgId === msgId)
+    if (requestIndex !== -1) {
+      this.config.pendingRequests.splice(requestIndex, 1)
+      this.saveConfig()
+    }
   }
 
   async getGroup(groupId) {

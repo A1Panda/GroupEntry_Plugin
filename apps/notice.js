@@ -40,14 +40,6 @@ export class NoticeHandler extends plugin {
       logger.error('[群组邀请管理] 获取用户信息失败:', err)
     }
 
-    logger.info('[群组邀请管理] 收到群邀请请求:', {
-      group_id: this.e.group_id,
-      group_name: groupName,
-      user_id: this.e.user_id,
-      nickname: nickname,
-      flag: this.e.flag
-    })
-
     // 获取配置的群组信息
     const sourceGroup = await this.config.getSourceGroup()
     if (!sourceGroup) {
@@ -72,26 +64,46 @@ export class NoticeHandler extends plugin {
       `邀请人账号：${this.e.user_id}\n`,
       `邀请人昵称：${nickname}\n`,
       `----------------\n`,
-      `请邀请者、群主或群管理回复\n#确认加群 来同意加群请求\n`,
+      `请邀请者、群主或群管理回复 #确认加群 来同意加群请求\n`,
       `该请求将在5分钟后自动取消`
     ]
 
-    // 保存加群请求信息
-    await this.config.setPendingRequest({
-      groupId: this.e.group_id,
-      groupName: groupName,
-      userId: this.e.user_id,
-      nickname: nickname,
-      flag: this.e.flag,
-      requestTime: Date.now()
-    })
-
-    // 发送通知到配置的群
+    // 发送通知到配置的群并保存请求信息
     try {
-      logger.info('[群组邀请管理] 正在发送通知到配置的群:', sourceGroup.groupId)
-      await this.e.bot.pickGroup(sourceGroup.groupId).sendMsg(msg)
+      const res = await this.e.bot.pickGroup(sourceGroup.groupId).sendMsg(msg)
+
+      if (res && res.message_id) {
+        // 保存加群请求信息，包括通知消息ID
+        await this.config.addPendingRequest({
+          groupId: this.e.group_id,
+          groupName: groupName,
+          userId: this.e.user_id,
+          nickname: nickname,
+          flag: this.e.flag,
+          requestTime: Date.now(),
+          msgId: res.message_id
+        })
+      } else {
+        logger.error('[群组邀请管理] 发送通知失败或未获取到消息ID')
+        // 发送私聊消息给邀请者告知通知失败
+        try {
+          await this.e.bot.pickFriend(this.e.user_id).sendMsg(
+            '您的加群请求处理失败，请稍后再试'
+          )
+        } catch (err) {
+          logger.error('[群组邀请管理] 发送私聊消息失败:', err)
+        }
+      }
     } catch (err) {
       logger.error('[群组邀请管理] 发送通知失败:', err)
+      // 发送私聊消息给邀请者告知通知失败
+      try {
+        await this.e.bot.pickFriend(this.e.user_id).sendMsg(
+          '您的加群请求处理失败，请稍后再试'
+        )
+      } catch (err) {
+        logger.error('[群组邀请管理] 发送私聊消息失败:', err)
+      }
     }
 
     // 发送私聊消息给邀请者
