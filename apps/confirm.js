@@ -14,6 +14,9 @@ export class ConfirmHandler extends plugin {
   }
 
   async accept(e) {
+    // 防止e.msg为undefined或非字符串
+    if (!e.msg || typeof e.msg !== 'string') return false;
+
     // 检查是否是确认或拒绝加群命令
     const isConfirm = e.msg.includes('#确认加群')
     const isReject = e.msg.includes('#拒绝加群')
