@@ -1,29 +1,42 @@
 import fs from 'fs'
 import path from 'path'
 import { Group } from '../model/group.js'
+import lodash from 'lodash'
 
 export class Config {
   constructor() {
     this.configPath = path.join(process.cwd(), 'plugins/GroupEntry_Plugin/config/config.json')
+    this.defaultConfigPath = path.join(process.cwd(), 'plugins/GroupEntry_Plugin/config/defaultConfig.json')
+    this.defaultConfig = this.loadDefaultConfig()
     this.config = this.loadConfig()
-    // 初始化pendingRequests为数组，如果config中没有则创建
-    if (!this.config.pendingRequests) {
-      this.config.pendingRequests = []
+    this.config = lodash.merge({}, this.defaultConfig, this.config)
+    this.saveConfig()
+  }
+
+  loadDefaultConfig() {
+    try {
+      if (fs.existsSync(this.defaultConfigPath)) {
+        return JSON.parse(fs.readFileSync(this.defaultConfigPath, 'utf8'))
+      }
+    } catch (err) {
+      logger.error('[群组邀请管理] 加载默认配置失败:', err)
     }
+    // 兜底
+    return { groups: [], pendingRequests: [], requestExpireMinutes: 5, maxPendingRequests: 20 }
   }
 
   loadConfig() {
     try {
       if (fs.existsSync(this.configPath)) {
-        return JSON.parse(fs.readFileSync(this.configPath, 'utf8'))
+        const userConfig = JSON.parse(fs.readFileSync(this.configPath, 'utf8'))
+        // 合并默认配置，补全新字段
+        return lodash.merge({}, this.defaultConfig, userConfig)
       }
     } catch (err) {
       logger.error('[群组邀请管理] 加载配置文件失败:', err)
     }
-    return {
-      groups: [],
-      pendingRequests: [] // 初始化为数组
-    }
+    // 没有配置文件时返回默认配置
+    return lodash.cloneDeep(this.defaultConfig)
   }
 
   saveConfig() {
@@ -34,46 +47,20 @@ export class Config {
     }
   }
 
-  async getSourceGroup() {
-    const sourceGroup = this.config.groups.find(g => g.isSourceGroup)
-    if (!sourceGroup) return null
-    
-    return {
-      groupId: sourceGroup.groupId,
-      setTime: new Date(sourceGroup.lastUpdate).getTime()
-    }
+  getExpireMs() {
+    return (this.config.requestExpireMinutes || 5) * 60 * 1000
   }
 
-  async setSourceGroup(groupId) {
-    // 清除其他群的来源群组标记
-    this.config.groups.forEach(g => {
-      if (g.isSourceGroup) {
-        g.isSourceGroup = false
-      }
-    })
-
-    // 设置新的来源群组
-    const group = this.config.groups.find(g => g.groupId === groupId)
-    if (group) {
-      group.isSourceGroup = true
-      group.lastUpdate = new Date().toLocaleString()
-    } else {
-      this.config.groups.push({
-        groupId,
-        groupName: '',
-        isSourceGroup: true,
-        lastUpdate: new Date().toLocaleString()
-      })
-    }
-    
-    this.saveConfig()
+  getMaxPending() {
+    return this.config.maxPendingRequests || 20
   }
 
   async getPendingRequests() {
     // 过滤掉过期的请求
     const now = Date.now()
+    const expireMs = this.getExpireMs()
     this.config.pendingRequests = this.config.pendingRequests.filter(req => 
-      now - req.requestTime <= 5 * 60 * 1000
+      now - req.requestTime <= expireMs
     )
     this.saveConfig()
     return this.config.pendingRequests
@@ -84,18 +71,19 @@ export class Config {
     if (requestIndex === -1) return null
 
     const pendingRequest = this.config.pendingRequests[requestIndex]
-
-    // 检查请求是否过期（5分钟）
-    if (Date.now() - pendingRequest.requestTime > 5 * 60 * 1000) {
-      this.config.pendingRequests.splice(requestIndex, 1) // 删除过期请求
+    if (Date.now() - pendingRequest.requestTime > this.getExpireMs()) {
+      this.config.pendingRequests.splice(requestIndex, 1)
       this.saveConfig()
       return null
     }
-
     return pendingRequest
   }
 
   async addPendingRequest(request) {
+    // 限制最大待处理数
+    if (this.config.pendingRequests.length >= this.getMaxPending()) {
+      this.config.pendingRequests.shift()
+    }
     this.config.pendingRequests.push(request)
     this.saveConfig()
   }
