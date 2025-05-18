@@ -6,9 +6,9 @@ export function supportGuoba() {
     pluginInfo: {
       name: 'GroupEntry_Plugin',
       title: '群组邀请管理',
-      author: ['@A1_Pa'],
-      authorLink: ['https://github.com/A1_Pa'],
-      link: 'https://github.com/A1_Pa/GroupEntry_Plugin',
+      author: ['@A1_Panda'],
+      authorLink: ['https://github.com/A1Panda'],
+      link: 'https://github.com/A1Panda/GroupEntry_Plugin',
       isV3: true,
       isV2: false,
       showInMenu: true,

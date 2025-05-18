@@ -103,12 +103,15 @@ export class NoticeHandler extends plugin {
 
     // 发送私聊消息给邀请者
     try {
+      // 收集所有启用的管理群号
+      const enabledGroups = (this.config.config.groups || []).filter(g => g.isEnabled)
+      const groupIds = enabledGroups.map(g => g.groupId).join('、')
       await this.e.bot.pickFriend(this.e.user_id).sendMsg(
         '【群组邀请管理】\n' +
         '📢 您的加群请求已收到\n' +
         '━━━━━━━━━━━━━━\n' +
         '⚠️ 请按以下步骤操作：\n' +
-        '1️⃣ 进入管理群\n' +
+        `1️⃣ 进入管理群（群号：${groupIds}）\n` +
         '2️⃣ 找到机器人发送的加群请求通知\n' +
         '3️⃣ 回复该通知并发送 #确认加群 或 #拒绝加群\n' +
         '━━━━━━━━━━━━━━\n' +
