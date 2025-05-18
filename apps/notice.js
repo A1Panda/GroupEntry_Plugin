@@ -58,14 +58,23 @@ export class NoticeHandler extends plugin {
     // 构建通知消息
     const msg = [
       segment.image(`https://p.qlogo.cn/gh/${this.e.group_id}/${this.e.group_id}/0`),
-      `[群组邀请管理 - 新的加群请求]\n`,
+      `【群组邀请管理】\n`,
+      `📢 新的加群请求\n`,
+      `━━━━━━━━━━━━━━\n`,
+      `📌 群组信息\n`,
       `群号：${this.e.group_id}\n`,
       `群名：${groupName}\n`,
-      `邀请人账号：${this.e.user_id}\n`,
-      `邀请人昵称：${nickname}\n`,
-      `----------------\n`,
-      `请邀请者、群主或群管理回复 #确认加群 来同意加群请求\n`,
-      `该请求将在5分钟后自动取消`
+      `━━━━━━━━━━━━━━\n`,
+      `👤 邀请人信息\n`,
+      `账号：${this.e.user_id}\n`,
+      `昵称：${nickname}\n`,
+      `━━━━━━━━━━━━━━\n`,
+      `⚠️ 操作说明\n`,
+      `1️⃣ 请邀请者、群主或群管理\n`,
+      `2️⃣ 引用回复本条消息\n`,
+      `3️⃣ 发送 #确认加群\n`,
+      `━━━━━━━━━━━━━━\n`,
+      `⏰ 注意：该请求将在5分钟后自动取消`
     ]
 
     // 发送通知到配置的群并保存请求信息
@@ -109,9 +118,15 @@ export class NoticeHandler extends plugin {
     // 发送私聊消息给邀请者
     try {
       await this.e.bot.pickFriend(this.e.user_id).sendMsg(
-        '已收到您的加群请求，请等待确认\n' +
-        `您可以在群 ${sourceGroup.groupId} 中发送\n` +
-        '#确认加群 来确认加群请求'
+        '【群组邀请管理】\n' +
+        '📢 您的加群请求已收到\n' +
+        '━━━━━━━━━━━━━━\n' +
+        '⚠️ 请按以下步骤操作：\n' +
+        '1️⃣ 进入群 ' + sourceGroup.groupId + '\n' +
+        '2️⃣ 找到机器人发送的加群请求通知\n' +
+        '3️⃣ 回复该通知并发送 #确认加群\n' +
+        '━━━━━━━━━━━━━━\n' +
+        '⏰ 注意：请求将在5分钟后自动取消'
       )
     } catch (err) {
       logger.error('[群组邀请管理] 发送私聊消息失败:', err)
