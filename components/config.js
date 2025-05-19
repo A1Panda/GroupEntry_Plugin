@@ -56,7 +56,6 @@ export class Config {
   saveConfig() {
     try {
       // 记录配置变更日志
-      logger.mark('[群组邀请管理] 配置文件发生变更')
       logger.debug('[群组邀请管理] 配置详情:', JSON.stringify(this.config, null, 2))
       
       fs.writeFileSync(this.configPath, JSON.stringify(this.config, null, 2))

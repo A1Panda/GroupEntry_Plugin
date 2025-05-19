@@ -32,14 +32,6 @@ export const joinGroupSchemas = [
           }
         },
         {
-          field: "groupName",
-          label: "群名称",
-          component: "Input",
-          componentProps: {
-            placeholder: "请输入群名称（可选）"
-          }
-        },
-        {
           field: "wenti",
           label: "加群问题",
           required: true,
@@ -52,48 +44,20 @@ export const joinGroupSchemas = [
           field: "ans",
           label: "答案列表",
           required: true,
-          component: "GSubForm",
-          defaultValue: [],
-          show: ({ mode }) => mode === 'edit',
+          component: "GTags",
           componentProps: {
-            multiple: true,
-            showRemove: true,
-            showAdd: true,
-            schemas: [
-              {
-                field: "value",
-                label: "答案",
-                required: true,
-                component: "Input",
-                componentProps: {
-                  placeholder: "请输入答案"
-                }
-              }
-            ]
-          }
+            placeholder: "请输入答案，回车添加，可批量粘贴"
+          },
+          show: ({ mode }) => mode === 'edit'
         },
         {
           field: "BlackList",
           label: "黑名单",
-          component: "GSubForm",
-          defaultValue: [],
-          show: ({ mode }) => mode === 'edit',
+          component: "GTags",
           componentProps: {
-            multiple: true,
-            showRemove: true,
-            showAdd: true,
-            schemas: [
-              {
-                field: "userId",
-                label: "QQ号",
-                required: true,
-                component: "Input",
-                componentProps: {
-                  placeholder: "请输入QQ号"
-                }
-              }
-            ]
-          }
+            placeholder: "请输入QQ号，回车添加，可批量粘贴"
+          },
+          show: ({ mode }) => mode === 'edit'
         },
         {
           field: "exactMatch",
