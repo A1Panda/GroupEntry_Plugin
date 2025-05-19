@@ -1,4 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js'
+
 import { Config } from '../components/config.js'
 
 export class NoticeHandler extends plugin {
@@ -14,6 +15,69 @@ export class NoticeHandler extends plugin {
   }
 
   async accept() {
+    // 黑名单拦截：如果被邀请进的群在黑名单，直接拒绝邀请
+    const blackGroups = this.config.getEnabledBlackGroups()
+    if (blackGroups.some(g => g.groupIds.includes(String(this.e.group_id)))) {
+      logger.mark(`[群组邀请管理] 群${this.e.group_id}在黑名单，自动拒绝邀请`)
+      try {
+        await this.e.bot.sendApi('set_group_add_request', {
+          flag: this.e.flag,
+          sub_type: 'invite',
+          approve: false
+        })
+        // 通知邀请人
+        try {
+          await this.e.bot.pickFriend(this.e.user_id).sendMsg(
+            '【群组邀请管理】\n' +
+            '❌ 加群请求被拒绝\n' +
+            '━━━━━━━━━━━━━━\n' +
+            '📢 该群已被列入黑名单\n' +
+            '📝 群组信息：\n' +
+            `群号：${this.e.group_id}\n` +
+            '━━━━━━━━━━━━━━\n' +
+            '💡 如有疑问请联系机器人管理员'
+          )
+        } catch (err) {
+          logger.error('[群组邀请管理] 发送黑名单拒绝私聊消息失败:', err)
+        }
+      } catch (err) {
+        logger.error('[群组邀请管理] 拒绝黑名单群邀请失败:', err)
+      }
+      return true
+    }
+
+    // 白名单：如果被邀请进的群在白名单，直接同意邀请（兼容groupId/groupIdInput）
+    const whiteGroups = Array.isArray(this.config.config.whiteGroups) ? this.config.config.whiteGroups : []
+    if (whiteGroups.some(g => {
+      let groupIds = Array.isArray(g.groupId) ? g.groupId : [g.groupId]
+      let groupIdInputs = Array.isArray(g.groupIdInput) ? g.groupIdInput : [g.groupIdInput]
+      return groupIds.map(String).includes(String(this.e.group_id)) ||
+             groupIdInputs.map(String).includes(String(this.e.group_id))
+    })) {
+      logger.mark(`[加群审核] 群${this.e.group_id}在白名单，自动同意邀请`)
+      try {
+        await this.e.bot.sendApi('set_group_add_request', {
+          flag: this.e.flag,
+          sub_type: 'invite',
+          approve: true
+        })
+        // 通知邀请人
+        const msg = '【群组邀请管理】\n' +
+          '✅ 已自动同意加群邀请\n' +
+          '━━━━━━━━━━━━━━\n' +
+          '机器人已自动加入群聊，无需审核。'
+        try {
+          await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
+          await this.notifyExtraUsers(msg, this.e)
+        } catch (err) {
+          logger.error('[群组邀请管理] 发送自动同意私聊消息失败:', err)
+        }
+      } catch (err) {
+        logger.error('[群组邀请管理] 自动同意加群邀请失败:', err)
+      }
+      return true
+    }
+
     // 读取审核模式
     const mode = this.config.config.reviewMode ?? 2
     if (mode === 0) {
@@ -108,7 +172,7 @@ export class NoticeHandler extends plugin {
       `【群组邀请管理】\n`,
       `📢 新的加群请求\n`,
       `━━━━━━━━━━━━━━\n`,
-      `📌 群组信息\n`,
+      `👤 群组信息\n`,
       `群号：${this.e.group_id}\n`,
       `群名：${groupName}\n`,
       `━━━━━━━━━━━━━━\n`,
@@ -128,34 +192,41 @@ export class NoticeHandler extends plugin {
     let hasSend = false
     for (const group of this.config.config.groups || []) {
       if (!group.isEnabled) continue
-      try {
-        const res = await this.e.bot.pickGroup(group.groupId).sendMsg(msg)
-        if (res && res.message_id) {
-          // 保存加群请求信息，包括通知消息ID和管理群号
-          await this.config.addPendingRequest({
-            msgId: res.message_id,
-            manageGroupId: group.groupId, // 通知发送到的管理群号
-            groupId: this.e.group_id,     // 被邀请的目标群号
-            groupName: groupName,
-            userId: this.e.user_id,
-            nickname: nickname,
-            flag: this.e.flag,
-            requestTime: Date.now()
-          })
-          hasSend = true
-        } else {
-          logger.error('[群组邀请管理] 发送通知失败或未获取到消息ID')
+      // 兼容 groupId 为数组或字符串
+      let groupIds = Array.isArray(group.groupId) ? group.groupId : [group.groupId]
+      for (const gid of groupIds) {
+        if (!gid) continue
+        try {
+          const res = await this.e.bot.pickGroup(gid).sendMsg(msg)
+          if (res && res.message_id) {
+            // 保存加群请求信息，包括通知消息ID和管理群号
+            await this.config.addPendingRequest({
+              msgId: res.message_id,
+              manageGroupId: gid, // 通知发送到的管理群号
+              groupId: this.e.group_id,     // 被邀请的目标群号
+              groupName: groupName,
+              userId: this.e.user_id,
+              nickname: nickname,
+              flag: this.e.flag,
+              requestTime: Date.now()
+            })
+            hasSend = true
+          } else {
+            logger.error('[群组邀请管理] 发送通知失败或未获取到消息ID')
+          }
+        } catch (err) {
+          logger.error(`[群组邀请管理] 向管理群${gid}发送通知失败:`, err)
         }
-      } catch (err) {
-        logger.error(`[群组邀请管理] 向管理群${group.groupId}发送通知失败:`, err)
       }
     }
 
     // 通知额外用户（内容与管理群一致）
     await this.notifyExtraUsers(msg, this.e)
 
-    if (!hasSend) {
-      // 没有任何管理群发送成功，通知邀请人
+    // 判断是否有有效的notifyUsers
+    const notifyUsers = Array.isArray(this.config.config.notifyUsers) ? this.config.config.notifyUsers.filter(u => u.userId) : []
+    if (!hasSend && notifyUsers.length === 0) {
+      // 没有任何管理群发送成功，也没有管理用户，通知邀请人
       try {
         await this.e.bot.pickFriend(this.e.user_id).sendMsg(
           '您的加群请求处理失败，未找到可用的管理群，请联系机器人管理员。'

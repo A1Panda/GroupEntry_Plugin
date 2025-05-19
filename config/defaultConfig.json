@@ -1,13 +1,16 @@
 {
   "groups": [],
+  "notifyUsers": [],
   "pendingRequests": [],
   "requestExpireMinutes": 5,
   "maxPendingRequests": 20,
-  "minGroupMember": 10,
+  "minGroupMember": 100,
   "autoQuitEnabled": true,
   "autoQuitMsg": "本群成员数仅{memberCount}人，未达到最低要求（{minMember}人），机器人将自动退出。\n\n管理群号：{groupIds}",
   "reviewMode": 2,
   "allowAdminInvite": false,
   "allowInviterConfirm": true,
-  "notifyUsers": []
+  "blackGroups": [],
+  "whiteGroups": [],
+  "autoQuitCron": "0 0 * * * ? *"
 } 

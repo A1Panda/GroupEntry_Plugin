@@ -37,6 +37,8 @@ export class ConfirmHandler extends plugin {
       logger.error('[群组邀请管理] 解析消息失败:', err)
     }
 
+    logger.debug(`[调试] quoteMsgId: ${quoteMsgId}`)
+
     if (!quoteMsgId) {
       await e.reply('【群组邀请管理】\n' +
         '❌ 操作失败\n' +
@@ -62,6 +64,8 @@ export class ConfirmHandler extends plugin {
       logger.error('[群组邀请管理] 获取引用消息内容失败:', err)
     }
 
+    logger.debug(`[调试] 引用消息内容: ${JSON.stringify(quoteMsgSegments)}`)
+
     // 从消息内容中提取群号
     let groupId = null
     if (quoteMsgSegments && Array.isArray(quoteMsgSegments)) {
@@ -75,6 +79,8 @@ export class ConfirmHandler extends plugin {
         }
       }
     }
+
+    logger.debug(`[调试] 引用消息提取到的groupId: ${groupId}`)
 
     if (!groupId) {
       await e.reply('【群组邀请管理】\n' +
@@ -90,7 +96,17 @@ export class ConfirmHandler extends plugin {
 
     // 获取待处理的加群请求
     const pendingRequests = await this.config.getPendingRequests()
-    const pendingRequest = pendingRequests.find(req => String(req.groupId) === String(groupId))
+    logger.debug(`[调试] 当前pendingRequests: ${JSON.stringify(pendingRequests)}`)
+    const pendingRequest = pendingRequests.find(req => {
+      // 兼容 manageGroupId/groupId/groupIdInput 为数组或字符串，全部转字符串再比较
+      let manageGroupIds = Array.isArray(req.manageGroupId) ? req.manageGroupId : [req.manageGroupId]
+      let groupIds = Array.isArray(req.groupId) ? req.groupId : [req.groupId]
+      let groupIdInputs = Array.isArray(req.groupIdInput) ? req.groupIdInput : [req.groupIdInput]
+      return groupIds.map(String).includes(String(groupId))
+        || manageGroupIds.map(String).includes(String(groupId))
+        || groupIdInputs.map(String).includes(String(groupId))
+    })
+    logger.debug(`[调试] 匹配到的pendingRequest: ${JSON.stringify(pendingRequest)}`)
     
     if (!pendingRequest) {
       await e.reply('【群组邀请管理】\n' +
@@ -110,8 +126,34 @@ export class ConfirmHandler extends plugin {
     const isAdmin = e.sender.role === 'admin' || e.sender.role === 'owner'
     const isNotifyUser = Array.isArray(this.config.config.notifyUsers)
       && this.config.config.notifyUsers.some(u => String(u.userId) === String(e.user_id));
+    
+    // 修改权限检查逻辑
     const allowInviterConfirm = this.config.config.allowInviterConfirm !== false
-    if ((!isAdmin && !isInviter && !isNotifyUser) || (!allowInviterConfirm && isInviter && !isAdmin && !isNotifyUser)) {
+    logger.debug(`[群组邀请管理] 权限检查:
+      邀请者: ${isInviter}
+      管理员: ${isAdmin}
+      通知用户: ${isNotifyUser}
+      允许邀请者确认: ${allowInviterConfirm}
+      用户ID: ${e.user_id}
+      邀请者ID: ${pendingRequest.userId}
+    `)
+
+    // 如果邀请者确认功能关闭，则邀请者不能操作（除非是管理员或通知用户）
+    if (!allowInviterConfirm && isInviter && !isAdmin && !isNotifyUser) {
+      await e.reply('【群组邀请管理】\n' +
+        '❌ 操作失败\n' +
+        '━━━━━━━━━━━━━━\n' +
+        '⚠️ 权限不足\n' +
+        '📝 当前已关闭邀请者确认功能\n' +
+        '只有以下用户才能处理加群请求：\n' +
+        '1️⃣ 群主\n' +
+        '2️⃣ 群管理员\n' +
+        '3️⃣ 通知用户（配置）')
+      return true
+    }
+
+    // 如果既不是邀请者，也不是管理员，也不是通知用户，则无权限
+    if (!isAdmin && !isInviter && !isNotifyUser) {
       await e.reply('【群组邀请管理】\n' +
         '❌ 操作失败\n' +
         '━━━━━━━━━━━━━━\n' +

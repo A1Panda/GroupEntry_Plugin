@@ -13,6 +13,38 @@ export class AutoQuitHandler extends plugin {
   }
 
   async accept() {
+    // 黑名单优先，直接退群或拒绝邀请（必须放在所有逻辑最前面）
+    const blackGroups = this.config.getEnabledBlackGroups()
+    logger.debug(`[自动退群] 当前群号: ${this.e.group_id}`)
+    logger.debug(`[自动退群] 黑名单群组列表: ${JSON.stringify(blackGroups, null, 2)}`)
+    
+    const isBlacklisted = blackGroups.some(g => {
+      const isInBlacklist = g.groupIds.includes(String(this.e.group_id))
+      logger.debug(`[自动退群] 检查群组 ${this.e.group_id} 是否在黑名单 ${g.groupIds.join(',')} 中: ${isInBlacklist}`)
+      return isInBlacklist
+    })
+    
+    if (isBlacklisted) {
+      logger.mark(`[自动退群] 命中启用的黑名单，立即退群`)
+      // 如果机器人已在群，直接退群
+      if (this.e.group) {
+        await this.reply('本群已被列入黑名单，机器人将自动退出。')
+        this.e.group.quit()
+      } else if (this.e.flag) {
+        // 如果是加群邀请事件，直接拒绝
+        try {
+          await this.e.bot.sendApi('set_group_add_request', {
+            flag: this.e.flag,
+            sub_type: 'invite',
+            approve: false
+          })
+        } catch (err) {
+          logger.error('[自动退群] 拒绝黑名单群邀请失败:', err)
+        }
+      }
+      return true
+    }
+
     // 开关关闭则不处理
     if (!this.config.config.autoQuitEnabled) return false
 
@@ -67,6 +99,18 @@ export class AutoQuitHandler extends plugin {
       }
     } catch (err) {
       logger.error('[自动退群] 获取群成员失败:', err)
+      return false
+    }
+
+    // 白名单优先，不退群
+    const whiteGroups = this.config.getEnabledWhiteGroups()
+    if (whiteGroups.some(g => {
+      let groupIds = Array.isArray(g.groupId) ? g.groupId : [g.groupId]
+      let groupIdInputs = Array.isArray(g.groupIdInput) ? g.groupIdInput : [g.groupIdInput]
+      return groupIds.map(String).includes(String(this.e.group_id)) ||
+             groupIdInputs.map(String).includes(String(this.e.group_id))
+    })) {
+      logger.mark(`[自动退群] 群${this.e.group_id}在启用的白名单，任何人邀请都不会退群`)
       return false
     }
 
