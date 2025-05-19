@@ -8,6 +8,6 @@ export const pluginInfo = {
   isV2: false,
   showInMenu: true,
   description: '基于 Yunzai 的群组邀请管理插件，实现更安全的加群流程',
-  icon: 'fluent-emoji-flat:robot',
+  icon: 'fluent-emoji-flat:panda',
   iconColor: '#000000',
 } 
