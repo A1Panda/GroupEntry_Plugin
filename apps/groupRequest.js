@@ -170,31 +170,33 @@ export class GroupRequestHandler extends plugin {
 
             const msg = [
                 {
+                    type: 'image',
+                    file: `https://q1.qlogo.cn/headimg_dl?dst_uin=${e.user_id}&spec=640`
+                },
+                {
                     type: 'text',
                     text: '【加群申请处理】\n' +
                         '📢 收到新的加群申请\n' +
                         '━━━━━━━━━━━━━━\n' +
                         `📝 问题：${groupConfig.wenti}\n` +
                         `👤 用户：${e.user_id}\n` +
-                        (questionPart ? `❓ 用户问题：${questionPart}\n` : '') +
-                        (answerPart ? `💭 用户答案：${answerPart}\n` : '') +
+                        (answerPart ? `💬 用户答案：${answerPart}\n` : '') +
                         (!questionPart && !answerPart ? `💬 留言：${comment}\n` : '') +
                         '━━━━━━━━━━━━━━'
                 }
             ];
-            Bot.pickGroup(`${e.group_id}`).sendMsg(msg);
+            await Bot.pickGroup(`${e.group_id}`).sendMsg(msg);
 
             // 检查黑名单
             if (groupConfig.BlackList.includes(`${e.user_id}`)) {
-                Bot.pickGroup(`${e.group_id}`).sendMsg([{
-                    type: 'text',
-                    text: '【加群申请处理】\n' +
-                        '❌ 加群申请被拒绝\n' +
-                        '━━━━━━━━━━━━━━\n' +
-                        '📢 该用户已被列入黑名单\n' +
-                        `👤 用户：${e.user_id}\n` +
-                        '━━━━━━━━━━━━━━'
-                }]);
+                await Bot.pickGroup(`${e.group_id}`).sendMsg(
+                    '【加群申请处理】\n' +
+                    '❌ 加群申请被拒绝\n' +
+                    '━━━━━━━━━━━━━━\n' +
+                    '📢 该用户已被列入黑名单\n' +
+                    `👤 用户：${e.user_id}\n` +
+                    '━━━━━━━━━━━━━━'
+                );
                 e.approve(false);
                 return false;
             }
@@ -204,17 +206,16 @@ export class GroupRequestHandler extends plugin {
                 if (groupConfig.enableLevelCheck) {
                     const response = await fetch(`https://apis.kit9.cn/api/qq_material/api.php?qq=${e.user_id}`, {
                         timeout: 5000  // 添加5秒超时
-                    }).catch(err => {
-                        Bot.pickGroup(`${e.group_id}`).sendMsg([{
-                            type: 'text',
-                            text: '【加群申请处理】\n' +
-                                '⚠️ 处理异常\n' +
-                                '━━━━━━━━━━━━━━\n' +
-                                '📢 获取用户信息超时\n' +
-                                `👤 用户：${e.user_id}\n` +
-                                '💡 请稍后重试\n' +
-                                '━━━━━━━━━━━━━━'
-                        }]);
+                    }).catch(async err => {
+                        await Bot.pickGroup(`${e.group_id}`).sendMsg(
+                            '【加群申请处理】\n' +
+                            '⚠️ 处理异常\n' +
+                            '━━━━━━━━━━━━━━\n' +
+                            '📢 获取用户信息超时\n' +
+                            `👤 用户：${e.user_id}\n` +
+                            '💡 请稍后重试\n' +
+                            '━━━━━━━━━━━━━━'
+                        );
                         return null;
                     });
 
@@ -223,31 +224,29 @@ export class GroupRequestHandler extends plugin {
                     const data = await response.json();
 
                     if (!data?.data?.level) {
-                        Bot.pickGroup(`${e.group_id}`).sendMsg([{
-                            type: 'text',
-                            text: '【加群申请处理】\n' +
-                                '❌ 加群申请被拒绝\n' +
-                                '━━━━━━━━━━━━━━\n' +
-                                '📢 无法获取用户等级信息\n' +
-                                `👤 用户：${e.user_id}\n` +
-                                '━━━━━━━━━━━━━━'
-                        }]);
+                        await Bot.pickGroup(`${e.group_id}`).sendMsg(
+                            '【加群申请处理】\n' +
+                            '❌ 加群申请被拒绝\n' +
+                            '━━━━━━━━━━━━━━\n' +
+                            '📢 无法获取用户等级信息\n' +
+                            `👤 用户：${e.user_id}\n` +
+                            '━━━━━━━━━━━━━━'
+                        );
                         return false;
                     }
 
                     const userLevel = parseInt(data.data.level);
                     if (userLevel < groupConfig.minLevel) {
-                        Bot.pickGroup(`${e.group_id}`).sendMsg([{
-                            type: 'text',
-                            text: '【加群申请处理】\n' +
-                                '❌ 加群申请被拒绝\n' +
-                                '━━━━━━━━━━━━━━\n' +
-                                '📢 用户等级未达到要求\n' +
-                                `👤 用户：${e.user_id}\n` +
-                                `📊 当前等级：${userLevel}\n` +
-                                `📊 要求等级：${groupConfig.minLevel}\n` +
-                                '━━━━━━━━━━━━━━'
-                        }]);
+                        await Bot.pickGroup(`${e.group_id}`).sendMsg(
+                            '【加群申请处理】\n' +
+                            '❌ 加群申请被拒绝\n' +
+                            '━━━━━━━━━━━━━━\n' +
+                            '📢 用户等级未达到要求\n' +
+                            `👤 用户：${e.user_id}\n` +
+                            `📊 当前等级：${userLevel}\n` +
+                            `📊 要求等级：${groupConfig.minLevel}\n` +
+                            '━━━━━━━━━━━━━━'
+                        );
                         return false;
                     }
                 }
@@ -255,16 +254,15 @@ export class GroupRequestHandler extends plugin {
                 // 答案检查
                 const userAnswer = e.comment?.trim().toLowerCase(); // 转小写
                 if (!userAnswer) {
-                    Bot.pickGroup(`${e.group_id}`).sendMsg([{
-                        type: 'text',
-                        text: '【加群申请处理】\n' +
-                            '❌ 加群申请被拒绝\n' +
-                            '━━━━━━━━━━━━━━\n' +
-                            '📢 未检测到答案\n' +
-                            `👤 用户：${e.user_id}\n` +
-                            '💡 请重新申请并填写答案\n' +
-                            '━━━━━━━━━━━━━━'
-                    }]);
+                    await Bot.pickGroup(`${e.group_id}`).sendMsg(
+                        '【加群申请处理】\n' +
+                        '❌ 加群申请被拒绝\n' +
+                        '━━━━━━━━━━━━━━\n' +
+                        '📢 未检测到答案\n' +
+                        `👤 用户：${e.user_id}\n` +
+                        '💡 请重新申请并填写答案\n' +
+                        '━━━━━━━━━━━━━━'
+                    );
                     return false;
                 }
 
@@ -286,36 +284,31 @@ export class GroupRequestHandler extends plugin {
                         '📢 答案正确\n' +
                         `👤 用户：${e.user_id}\n` +
                         '━━━━━━━━━━━━━━';
-                    Bot.pickGroup(`${e.group_id}`).sendMsg([{
-                        type: 'text',
-                        text: successMsg
-                    }]);
+                    await Bot.pickGroup(`${e.group_id}`).sendMsg(successMsg);
                     e.approve(true);
                     return false;
                 }
 
-                Bot.pickGroup(`${e.group_id}`).sendMsg([{
-                    type: 'text',
-                    text: '【加群申请处理】\n' +
-                        '❌ 加群申请被拒绝\n' +
-                        '━━━━━━━━━━━━━━\n' +
-                        '📢 答案错误\n' +
-                        `👤 用户：${e.user_id}\n` +
-                        '💡 请检查答案是否正确后重新申请\n' +
-                        '━━━━━━━━━━━━━━'
-                }]);
+                await Bot.pickGroup(`${e.group_id}`).sendMsg(
+                    '【加群申请处理】\n' +
+                    '❌ 加群申请被拒绝\n' +
+                    '━━━━━━━━━━━━━━\n' +
+                    '📢 答案错误\n' +
+                    `👤 用户：${e.user_id}\n` +
+                    '💡 请检查答案是否正确后重新申请\n' +
+                    '━━━━━━━━━━━━━━'
+                );
             } catch (error) {
                 console.error('处理加群申请时发生错误：', error);
-                Bot.pickGroup(`${e.group_id}`).sendMsg([{
-                    type: 'text',
-                    text: '【加群申请处理】\n' +
-                        '⚠️ 处理异常\n' +
-                        '━━━━━━━━━━━━━━\n' +
-                        '📢 验证过程发生错误\n' +
-                        `👤 用户：${e.user_id}\n` +
-                        '💡 请稍后重试\n' +
-                        '━━━━━━━━━━━━━━'
-                }]);
+                await Bot.pickGroup(`${e.group_id}`).sendMsg(
+                    '【加群申请处理】\n' +
+                    '⚠️ 处理异常\n' +
+                    '━━━━━━━━━━━━━━\n' +
+                    '📢 验证过程发生错误\n' +
+                    `👤 用户：${e.user_id}\n` +
+                    '💡 请稍后重试\n' +
+                    '━━━━━━━━━━━━━━'
+                );
                 return false;
             }
         }
@@ -477,15 +470,14 @@ export class GroupLeaveHandler extends plugin {
             fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2));
 
             // 发送通知消息
-            Bot.pickGroup(e.group_id).sendMsg([{
-                type: 'text',
-                text: '【加群申请处理】\n' +
-                    '⚠️ 用户退群通知\n' +
-                    '━━━━━━━━━━━━━━\n' +
-                    `👤 用户：${userId}\n` +
-                    '📢 已自动加入黑名单\n' +
-                    '━━━━━━━━━━━━━━'
-            }]);
+            Bot.pickGroup(e.group_id).sendMsg(
+                '【加群申请处理】\n' +
+                '⚠️ 用户退群通知\n' +
+                '━━━━━━━━━━━━━━\n' +
+                `👤 用户：${userId}\n` +
+                '📢 已自动加入黑名单\n' +
+                '━━━━━━━━━━━━━━'
+            );
 
             return true;
         } catch (error) {
