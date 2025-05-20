@@ -91,19 +91,14 @@ if (!fs.existsSync(configFilePath)) {
         existingConfig = defaultConfig;
     }
 
-    // 更新配置文件中的数据，除了 BlackList 以外的所有配置只要变化就要修改外置配置文件
+    // 只添加新的群配置，不覆盖现有的配置
     for (const groupId in defaultConfig) {
         if (!existingConfig[groupId]) {
             existingConfig[groupId] = defaultConfig[groupId];
         } else {
-            for (const key in defaultConfig[groupId]) {
-                if (key !== 'BlackList' && existingConfig[groupId][key] !== defaultConfig[groupId][key]) {
-                    existingConfig[groupId][key] = defaultConfig[groupId][key];
-                }
-                // 确保添加autoBlacklistOnLeave选项
-                if (!('autoBlacklistOnLeave' in existingConfig[groupId])) {
-                    existingConfig[groupId].autoBlacklistOnLeave = true;
-                }
+            // 只确保必要的字段存在，不覆盖现有值
+            if (!('autoBlacklistOnLeave' in existingConfig[groupId])) {
+                existingConfig[groupId].autoBlacklistOnLeave = true;
             }
         }
     }

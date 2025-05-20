@@ -27,7 +27,13 @@ for (let i in files) {
     logger.error(ret[i].reason);
     continue;
   }
-  apps[name] = ret[i].value[Object.keys(ret[i].value)[0]];
+  
+  // 获取所有导出的类
+  const exportedClasses = ret[i].value;
+  // 将每个导出的类添加到apps对象中
+  for (const className in exportedClasses) {
+    apps[`${name}_${className}`] = exportedClasses[className];
+  }
 }
 
 logger.info(logger.green("[群组邀请管理] 插件载入成功"));
