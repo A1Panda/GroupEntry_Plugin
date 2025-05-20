@@ -1,6 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../components/config.js'
 
+
 export class AutoQuitHandler extends plugin {
   constructor() {
     super({
@@ -57,14 +58,33 @@ export class AutoQuitHandler extends plugin {
     }
 
     // 只有邀请人是主人才不退群
-    let isMaster = false
-    const masterIds = (global.yunzaiConfig?.master ? [global.yunzaiConfig.master] : []).concat(global.yunzaiConfig?.masters || [])
-    logger.mark(`[自动退群] 主人QQ号列表: ${masterIds.join(',')}`)
-    if (masterIds.includes(String(this.e.operator_id))) isMaster = true
-    logger.mark(`[自动退群] 邀请人${this.e.operator_id} 是否为主人: ${isMaster}`)
+    let isMaster = false;
+    if (this.e.operator_id) {
+        try {
+            // 获取主人列表
+            const master = this.e.runtime.cfg.master;
+            
+            logger.mark(`[自动退群] 获取到的主人配置:master=${JSON.stringify(master)}`);
+            
+            if (master) {
+                // 获取当前机器人账号的主人列表
+                const botMasters = master[String(this.e.self_id)];
+                if (botMasters && botMasters.includes(String(this.e.operator_id))) {
+                    isMaster = true;
+                }
+            }
+            
+            logger.mark(`[自动退群] 邀请人${this.e.operator_id} 是否为主人: ${isMaster}`);
+        } catch (err) {
+            logger.error('[自动退群] 检查主人权限失败:', err);
+        }
+    } else {
+        logger.mark('[自动退群] 未检测到邀请人信息');
+    }
+
     if (isMaster) {
-      logger.mark('[自动退群] 邀请人为主人，不退群')
-      return false
+        logger.mark('[自动退群] 邀请人为主人，不退群');
+        return false;
     }
 
     // 获取邀请人信息
