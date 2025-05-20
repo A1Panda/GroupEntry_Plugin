@@ -168,6 +168,19 @@ export class GroupRequestHandler extends plugin {
                 answerPart = parts[1].trim();
             }
 
+            // 获取用户信息
+            let nickname = "未知";
+            try {
+                const userInfo = await Bot.sendApi('get_stranger_info', {
+                    user_id: e.user_id
+                });
+                if (userInfo && userInfo.data) {
+                    nickname = userInfo.data.nickname;
+                }
+            } catch (err) {
+                console.error('获取用户信息失败:', err);
+            }
+
             const msg = [
                 {
                     type: 'image',
@@ -180,6 +193,7 @@ export class GroupRequestHandler extends plugin {
                         '━━━━━━━━━━━━━━\n' +
                         `📝 问题：${groupConfig.wenti}\n` +
                         `👤 用户：${e.user_id}\n` +
+                        `📌 昵称：${nickname}\n` +
                         (answerPart ? `💬 用户答案：${answerPart}\n` : '') +
                         (!questionPart && !answerPart ? `💬 留言：${comment}\n` : '') +
                         '━━━━━━━━━━━━━━'
