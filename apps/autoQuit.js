@@ -123,10 +123,57 @@ export class AutoQuitHandler extends plugin {
       const enabledGroups = (this.config.config.groups || []).filter(g => g.isEnabled)
       const groupIds = enabledGroups.map(g => g.groupId).join('、')
       quitMsg = quitMsg.replace('{groupIds}', groupIds)
-      await this.reply(quitMsg)
-      logger.mark(`[自动退群] ${this.e.group_id}，成员数：${memberCount}`)
-      this.e.group.quit()
-      return true
+
+      // 构建通知消息
+      const notifyMsg = [
+        {
+          type: 'image',
+          file: `https://p.qlogo.cn/gh/${this.e.group_id}/${this.e.group_id}/0`
+        },
+        {
+          type: 'text',
+          text: '【自动退群通知】\n' +
+            '⚠️ 机器人已自动退群\n' +
+            '━━━━━━━━━━━━━━\n' +
+            `📢 群号：${this.e.group_id}\n` +
+            `👥 当前人数：${memberCount}\n` +
+            `📊 最低要求：${minMember}\n` +
+            '━━━━━━━━━━━━━━\n' +
+            `💬 退群原因：${quitMsg}\n` +
+            '━━━━━━━━━━━━━━'
+        }
+      ];
+
+      // 通知配置中的群
+      for (const group of this.config.config.groups || []) {
+        if (!group.isEnabled) continue;
+        let groupIds = Array.isArray(group.groupId) ? group.groupId : [group.groupId];
+        for (const gid of groupIds) {
+          if (!gid) continue;
+          try {
+            await this.e.bot.pickGroup(gid).sendMsg(notifyMsg);
+          } catch (err) {
+            logger.error(`[自动退群] 向管理群${gid}发送通知失败:`, err);
+          }
+        }
+      }
+
+      // 通知配置中的用户
+      const notifyUsers = Array.isArray(this.config.config.notifyUsers) ? this.config.config.notifyUsers : [];
+      for (const user of notifyUsers) {
+        if (user.userId) {
+          try {
+            await this.e.bot.pickFriend(user.userId).sendMsg(notifyMsg);
+          } catch (err) {
+            logger.error(`[自动退群] 向用户${user.userId}发送通知失败:`, err);
+          }
+        }
+      }
+
+      await this.reply(quitMsg);
+      logger.mark(`[自动退群] ${this.e.group_id}，成员数：${memberCount}`);
+      this.e.group.quit();
+      return true;
     }
 
     return false
