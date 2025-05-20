@@ -157,12 +157,18 @@ export class GroupRequestHandler extends plugin {
     async accept(e) {
         let groupConfig = config[`${e.group_id}`];
         if (groupConfig) {
-            const msg = [`收到加群事件：\n问题：${groupConfig.wenti}\n用户：${e.user_id}\n留言：${e.comment}`];
+            const msg = {
+                type: 'text',
+                text: `收到加群事件：\n问题：${groupConfig.wenti}\n用户：${e.user_id}\n留言：${e.comment}`
+            };
             Bot.pickGroup(`${e.group_id}`).sendMsg(msg);
 
             // 检查黑名单
             if (groupConfig.BlackList.includes(`${e.user_id}`)) {
-                Bot.pickGroup(`${e.group_id}`).sendMsg(`黑名单用户，拒绝申请`);
+                Bot.pickGroup(`${e.group_id}`).sendMsg({
+                    type: 'text',
+                    text: `黑名单用户，拒绝申请`
+                });
                 e.approve(false);
                 return false;
             }
@@ -173,7 +179,10 @@ export class GroupRequestHandler extends plugin {
                     const response = await fetch(`https://apis.kit9.cn/api/qq_material/api.php?qq=${e.user_id}`, {
                         timeout: 5000  // 添加5秒超时
                     }).catch(err => {
-                        Bot.pickGroup(`${e.group_id}`).sendMsg(`获取用户信息超时，请稍后重试`);
+                        Bot.pickGroup(`${e.group_id}`).sendMsg({
+                            type: 'text',
+                            text: `获取用户信息超时，请稍后重试`
+                        });
                         return null;
                     });
 
@@ -182,13 +191,19 @@ export class GroupRequestHandler extends plugin {
                     const data = await response.json();
 
                     if (!data?.data?.level) {
-                        Bot.pickGroup(`${e.group_id}`).sendMsg(`无法获取用户等级信息，拒绝申请`);
+                        Bot.pickGroup(`${e.group_id}`).sendMsg({
+                            type: 'text',
+                            text: `无法获取用户等级信息，拒绝申请`
+                        });
                         return false;
                     }
 
                     const userLevel = parseInt(data.data.level);
                     if (userLevel < groupConfig.minLevel) {
-                        Bot.pickGroup(`${e.group_id}`).sendMsg(`用户等级（${userLevel}）未达到要求（${groupConfig.minLevel}），拒绝申请`);
+                        Bot.pickGroup(`${e.group_id}`).sendMsg({
+                            type: 'text',
+                            text: `用户等级（${userLevel}）未达到要求（${groupConfig.minLevel}），拒绝申请`
+                        });
                         return false;
                     }
                 }
@@ -196,7 +211,10 @@ export class GroupRequestHandler extends plugin {
                 // 答案检查
                 const userAnswer = e.comment?.trim().toLowerCase(); // 转小写
                 if (!userAnswer) {
-                    Bot.pickGroup(`${e.group_id}`).sendMsg(`未检测到答案，请重新申请并填写答案！`);
+                    Bot.pickGroup(`${e.group_id}`).sendMsg({
+                        type: 'text',
+                        text: `未检测到答案，请重新申请并填写答案！`
+                    });
                     return false;
                 }
 
@@ -208,15 +226,24 @@ export class GroupRequestHandler extends plugin {
                     const successMsg = groupConfig.enableLevelCheck ? 
                         `答案判断成功！QQ等级符合要求，已自动处理申请` : 
                         `答案判断成功！已自动处理申请`;
-                    Bot.pickGroup(`${e.group_id}`).sendMsg(successMsg);
+                    Bot.pickGroup(`${e.group_id}`).sendMsg({
+                        type: 'text',
+                        text: successMsg
+                    });
                     e.approve(true);
                     return false;
                 }
 
-                Bot.pickGroup(`${e.group_id}`).sendMsg(`答案判断失败！请检查答案是否正确后重新申请。`);
+                Bot.pickGroup(`${e.group_id}`).sendMsg({
+                    type: 'text',
+                    text: `答案判断失败！请检查答案是否正确后重新申请。`
+                });
             } catch (error) {
                 console.error('处理加群申请时发生错误：', error);
-                Bot.pickGroup(`${e.group_id}`).sendMsg(`验证过程发生错误，请稍后重试`);
+                Bot.pickGroup(`${e.group_id}`).sendMsg({
+                    type: 'text',
+                    text: `验证过程发生错误，请稍后重试`
+                });
                 return false;
             }
         }
@@ -378,10 +405,10 @@ export class GroupLeaveHandler extends plugin {
             fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2));
 
             // 发送通知消息
-            Bot.pickGroup(e.group_id).sendMsg([
-                `用户${userId}已退群，`,
-                `已自动将其加入黑名单`
-            ]);
+            Bot.pickGroup(e.group_id).sendMsg({
+                type: 'text',
+                text: `用户${userId}已退群，已自动将其加入黑名单`
+            });
 
             return true;
         } catch (error) {
