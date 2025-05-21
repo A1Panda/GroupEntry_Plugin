@@ -7,7 +7,7 @@ export class BlacklistManager extends plugin {
       name: '黑白名单管理',
       dsc: '管理群组黑白名单',
       event: 'message',
-      priority: 1000,
+      priority: 599,
       rule: [
         {
           reg: '^#(添加|删除)(黑|白)名单群\\s*(\\d+)$',
