@@ -1,7 +1,7 @@
 {
     "name": "group-entry-plugin",
     "version": "1.0.0",
-    "description": "Yunzai-Bot 群组邀请管理插件，支持加群审核、自动退群、可视化配置等功能。",
+    "description": "Yunzai-Bot 群组邀请管理插件，支持加群审核、自动退群、可视化配置等功能。兼容 napcat 和 icqq 适配器。",
     "author": "@A1_Pa",
     "type": "module",
     "main": "index.js",
@@ -19,7 +19,10 @@
         "加群审核",
         "自动退群",
         "锅巴面板",
-        "插件"
+        "插件",
+        "napcat",
+        "icqq",
+        "适配器"
     ],
     "prettier": {
         "useTabs": false,

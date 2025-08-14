@@ -1,7 +1,12 @@
 import fs from 'node:fs';
+import { getSegment, checkCompatibility } from './utils/adapter.js';
 
+// 初始化适配器
+await checkCompatibility();
+
+// 设置全局 segment
 if (!global.segment) {
-  global.segment = (await import("oicq")).segment;
+  global.segment = await getSegment();
 }
 
 let ret = [];

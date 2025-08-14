@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
-
 import { Config } from '../components/config.js'
+import { getBotAdapter } from '../utils/adapter.js'
 
 export class NoticeHandler extends plugin {
   constructor() {
@@ -15,19 +15,17 @@ export class NoticeHandler extends plugin {
   }
 
   async accept() {
+    const botAdapter = getBotAdapter(this.e.bot)
+    
     // 黑名单拦截：如果被邀请进的群在黑名单，直接拒绝邀请
     const blackGroups = this.config.getEnabledBlackGroups()
     if (blackGroups.some(g => g.groupIds.includes(String(this.e.group_id)))) {
       logger.mark(`[群组邀请管理] 群${this.e.group_id}在黑名单，自动拒绝邀请`)
       try {
-        await this.e.bot.sendApi('set_group_add_request', {
-          flag: this.e.flag,
-          sub_type: 'invite',
-          approve: false
-        })
+        await botAdapter.setGroupAddRequest(this.e.flag, 'invite', false)
         // 通知邀请人
         try {
-          await this.e.bot.pickFriend(this.e.user_id).sendMsg(
+          await botAdapter.pickFriend(this.e.user_id).sendMsg(
             '【群组邀请管理】\n' +
             '❌ 加群请求被拒绝\n' +
             '━━━━━━━━━━━━━━\n' +
@@ -56,11 +54,7 @@ export class NoticeHandler extends plugin {
     })) {
       logger.mark(`[加群审核] 群${this.e.group_id}在白名单，自动同意邀请`)
       try {
-        await this.e.bot.sendApi('set_group_add_request', {
-          flag: this.e.flag,
-          sub_type: 'invite',
-          approve: true
-        })
+        await botAdapter.setGroupAddRequest(this.e.flag, 'invite', true)
         // 通知邀请人
         const msg = '【群组邀请管理】\n' +
           '✅ 已自动同意加群邀请\n' +
@@ -83,18 +77,14 @@ export class NoticeHandler extends plugin {
     if (mode === 0) {
       // 自动同意加群邀请
       try {
-        await this.e.bot.sendApi('set_group_add_request', {
-          flag: this.e.flag,
-          sub_type: 'invite',
-          approve: true
-        })
+        await botAdapter.setGroupAddRequest(this.e.flag, 'invite', true)
         // 通知邀请人
         const msg = '【群组邀请管理】\n' +
           '✅ 已自动同意加群邀请\n' +
           '━━━━━━━━━━━━━━\n' +
           '机器人已自动加入群聊，无需审核。'
         try {
-          await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
+          await botAdapter.pickFriend(this.e.user_id).sendMsg(msg)
           await this.notifyExtraUsers(msg, this.e)
         } catch (err) {
           logger.error('[群组邀请管理] 发送自动同意私聊消息失败:', err)
@@ -109,7 +99,7 @@ export class NoticeHandler extends plugin {
       const msg = '【群组邀请管理】\n' +
         '⚠️ 当前加群审核已关闭，机器人不会处理加群邀请。'
       try {
-        await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
+        await botAdapter.pickFriend(this.e.user_id).sendMsg(msg)
         await this.notifyExtraUsers(msg, this.e)
       } catch (err) {
         logger.error('[群组邀请管理] 发送审核关闭私聊消息失败:', err)
@@ -119,17 +109,13 @@ export class NoticeHandler extends plugin {
     if (mode === 3) {
       // 自动拒绝加群邀请
       try {
-        await this.e.bot.sendApi('set_group_add_request', {
-          flag: this.e.flag,
-          sub_type: 'invite',
-          approve: false
-        })
+        await botAdapter.setGroupAddRequest(this.e.flag, 'invite', false)
         const msg = '【群组邀请管理】\n' +
           '❌ 已自动拒绝加群邀请\n' +
           '━━━━━━━━━━━━━━\n' +
           '机器人已自动拒绝本次加群邀请。'
         try {
-          await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
+          await botAdapter.pickFriend(this.e.user_id).sendMsg(msg)
           await this.notifyExtraUsers(msg, this.e)
         } catch (err) {
           logger.error('[群组邀请管理] 发送自动拒绝私聊消息失败:', err)
@@ -143,9 +129,7 @@ export class NoticeHandler extends plugin {
     // 获取群信息
     let groupName = "未知"
     try {
-      const groupInfo = await this.e.bot.sendApi('get_group_info', {
-        group_id: this.e.group_id
-      })
+      const groupInfo = await botAdapter.getGroupInfo(this.e.group_id)
       if (groupInfo && groupInfo.data) {
         groupName = groupInfo.data.group_name
       }
@@ -156,9 +140,7 @@ export class NoticeHandler extends plugin {
     // 获取用户信息
     let nickname = "未知"
     try {
-      const userInfo = await this.e.bot.sendApi('get_stranger_info', {
-        user_id: this.e.user_id
-      })
+      const userInfo = await botAdapter.getStrangerInfo(this.e.user_id)
       if (userInfo && userInfo.data) {
         nickname = userInfo.data.nickname
       }
@@ -197,7 +179,7 @@ export class NoticeHandler extends plugin {
       for (const gid of groupIds) {
         if (!gid) continue
         try {
-          const res = await this.e.bot.pickGroup(gid).sendMsg(msg)
+          const res = await botAdapter.pickGroup(gid).sendMsg(msg)
           if (res && res.message_id) {
             // 保存加群请求信息，包括通知消息ID和管理群号
             await this.config.addPendingRequest({
@@ -228,7 +210,7 @@ export class NoticeHandler extends plugin {
     if (!hasSend && notifyUsers.length === 0) {
       // 没有任何管理群发送成功，也没有管理用户，通知邀请人
       try {
-        await this.e.bot.pickFriend(this.e.user_id).sendMsg(
+        await botAdapter.pickFriend(this.e.user_id).sendMsg(
           '您的加群请求处理失败，未找到可用的管理群，请联系机器人管理员。'
         )
       } catch (err) {
@@ -251,7 +233,7 @@ export class NoticeHandler extends plugin {
         '3️⃣ 回复该通知并发送 #确认加群 或 #拒绝加群\n' +
         '━━━━━━━━━━━━━━\n' +
         `⏰ 注意：请求将在${this.config.config.requestExpireMinutes || 5}分钟后自动取消`
-      await this.e.bot.pickFriend(this.e.user_id).sendMsg(msg)
+      await botAdapter.pickFriend(this.e.user_id).sendMsg(msg)
     } catch (err) {
       logger.error('[群组邀请管理] 发送私聊消息失败:', err)
     }
@@ -262,13 +244,14 @@ export class NoticeHandler extends plugin {
 
   // 辅助函数：同时通知额外用户
   async notifyExtraUsers(msg, e) {
+    const botAdapter = getBotAdapter(e.bot)
     const notifyUsers = Array.isArray(this.config.config.notifyUsers) ? this.config.config.notifyUsers : []
     logger.mark(`[群组邀请管理] 尝试通知额外用户: ${notifyUsers.map(u => u.userId).join(',')}`)
     for (const user of notifyUsers) {
       if (user.userId && user.userId != e.user_id) {
         logger.mark(`[群组邀请管理] 正在通知: ${user.userId}，内容：${msg}`)
         try {
-          await this.e.bot.pickFriend(user.userId).sendMsg(msg)
+          await botAdapter.pickFriend(user.userId).sendMsg(msg)
         } catch (err) {
           logger.error(`[群组邀请管理] 发送额外通知给${user.userId}失败:`, err)
         }

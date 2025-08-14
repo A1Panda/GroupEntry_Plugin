@@ -1,5 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../components/config.js'
+import { getBotAdapter } from '../utils/adapter.js'
 
 export class ConfirmHandler extends plugin {
   constructor() {
@@ -14,6 +15,8 @@ export class ConfirmHandler extends plugin {
   }
 
   async accept(e) {
+    const botAdapter = getBotAdapter(e.bot)
+    
     // 防止e.msg为undefined或非字符串
     if (!e.msg || typeof e.msg !== 'string') return false;
 
@@ -54,9 +57,7 @@ export class ConfirmHandler extends plugin {
     // 获取引用的消息内容
     let quoteMsgSegments = []
     try {
-      const quoteMsg = await e.bot.sendApi('get_msg', {
-        message_id: quoteMsgId
-      })
+      const quoteMsg = await botAdapter.getMsg(quoteMsgId)
       if (quoteMsg && quoteMsg.data && quoteMsg.data.message) {
         quoteMsgSegments = quoteMsg.data.message
       }
@@ -172,7 +173,7 @@ export class ConfirmHandler extends plugin {
       for (const user of notifyUsers) {
         if (user.userId && user.userId != e.user_id) {
           try {
-            await e.bot.pickFriend(user.userId).sendMsg(msg)
+            await botAdapter.pickFriend(user.userId).sendMsg(msg)
           } catch (err) {
             logger.error(`[群组邀请管理] 发送额外通知给${user.userId}失败:`, err)
           }
@@ -182,11 +183,7 @@ export class ConfirmHandler extends plugin {
 
     // 处理加群请求
     try {
-      await e.bot.sendApi('set_group_add_request', {
-        flag: pendingRequest.flag,
-        sub_type: 'invite',
-        approve: isConfirm
-      })
+      await botAdapter.setGroupAddRequest(pendingRequest.flag, 'invite', isConfirm)
     } catch (err) {
       logger.error('[群组邀请管理] 处理加群请求失败:', err)
       
@@ -231,7 +228,7 @@ export class ConfirmHandler extends plugin {
       await notifyExtraUsers(msg)
       // 私聊通知邀请者
       try {
-        await e.bot.pickFriend(pendingRequest.userId).sendMsg(
+        await botAdapter.pickFriend(pendingRequest.userId).sendMsg(
           '【群组邀请管理】\n' +
           '✅ 加群请求已确认\n' +
           '━━━━━━━━━━━━━━\n' +
@@ -257,7 +254,7 @@ export class ConfirmHandler extends plugin {
       await notifyExtraUsers(msg)
       // 私聊通知邀请者
       try {
-        await e.bot.pickFriend(pendingRequest.userId).sendMsg(
+        await botAdapter.pickFriend(pendingRequest.userId).sendMsg(
           '【群组邀请管理】\n' +
           '❌ 加群请求被拒绝\n' +
           '━━━━━━━━━━━━━━\n' +

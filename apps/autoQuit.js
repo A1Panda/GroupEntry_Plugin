@@ -1,5 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../components/config.js'
+import { getBotAdapter } from '../utils/adapter.js'
 
 
 export class AutoQuitHandler extends plugin {
@@ -14,6 +15,8 @@ export class AutoQuitHandler extends plugin {
   }
 
   async accept() {
+    const botAdapter = getBotAdapter(this.e.bot)
+    
     // 黑名单优先，直接退群或拒绝邀请（必须放在所有逻辑最前面）
     const blackGroups = this.config.getEnabledBlackGroups()
     logger.debug(`[自动退群] 当前群号: ${this.e.group_id}`)
@@ -34,11 +37,7 @@ export class AutoQuitHandler extends plugin {
       } else if (this.e.flag) {
         // 如果是加群邀请事件，直接拒绝
         try {
-          await this.e.bot.sendApi('set_group_add_request', {
-            flag: this.e.flag,
-            sub_type: 'invite',
-            approve: false
-          })
+          await botAdapter.setGroupAddRequest(this.e.flag, 'invite', false)
         } catch (err) {
           logger.error('[自动退群] 拒绝黑名单群邀请失败:', err)
         }
@@ -171,7 +170,7 @@ export class AutoQuitHandler extends plugin {
         for (const gid of groupIds) {
           if (!gid) continue;
           try {
-            await this.e.bot.pickGroup(gid).sendMsg(notifyMsg);
+            await botAdapter.pickGroup(gid).sendMsg(notifyMsg);
           } catch (err) {
             logger.error(`[自动退群] 向管理群${gid}发送通知失败:`, err);
           }
@@ -183,7 +182,7 @@ export class AutoQuitHandler extends plugin {
       for (const user of notifyUsers) {
         if (user.userId) {
           try {
-            await this.e.bot.pickFriend(user.userId).sendMsg(notifyMsg);
+            await botAdapter.pickFriend(user.userId).sendMsg(notifyMsg);
           } catch (err) {
             logger.error(`[自动退群] 向用户${user.userId}发送通知失败:`, err);
           }

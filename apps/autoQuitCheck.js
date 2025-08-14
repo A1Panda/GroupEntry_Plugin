@@ -1,6 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../components/config.js'
 import { Group } from '../model/group.js'
+import { getBotAdapter } from '../utils/adapter.js'
 
 export class AutoQuitCheck extends plugin {
   static instance = null
@@ -73,8 +74,10 @@ export class AutoQuitCheck extends plugin {
       const bot = botList[0]
       logger.debug(`[自动退群] 使用机器人：${bot.uin}`)
       
+      const botAdapter = getBotAdapter(bot)
+      
       // 获取机器人所在群列表
-      const groupList = await bot.sendApi('get_group_list')
+      const groupList = await botAdapter.getGroupList()
       if (!groupList || !groupList.data || !Array.isArray(groupList.data)) {
         logger.error('[自动退群] 获取群列表失败或格式错误')
         return false
@@ -99,9 +102,7 @@ export class AutoQuitCheck extends plugin {
             // 获取群信息
             let groupName = "未知"
             try {
-              const groupInfo = await bot.sendApi('get_group_info', {
-                group_id: group.group_id
-              })
+              const groupInfo = await botAdapter.getGroupInfo(group.group_id)
               if (groupInfo && groupInfo.data) {
                 groupName = groupInfo.data.group_name
               }
@@ -124,13 +125,13 @@ export class AutoQuitCheck extends plugin {
               `━━━━━━━━━━━━━━\n`,
               `💡 如有疑问请联系机器人管理员`
             ]
-            await bot.pickGroup(group.group_id).sendMsg(msg)
+            await botAdapter.pickGroup(group.group_id).sendMsg(msg)
             
             // 等待1秒后退出
             await new Promise(resolve => setTimeout(resolve, 1000))
             
             // 执行退群
-            await bot.pickGroup(group.group_id).quit()
+            await botAdapter.pickGroup(group.group_id).quit()
             logger.debug(`[自动退群] 成功退出黑名单群${group.group_id}`)
           } catch (err) {
             logger.error(`[自动退群] 退出黑名单群${group.group_id}失败:`, err)
